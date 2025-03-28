@@ -61,8 +61,8 @@ $$ f * g(10) = \sum_{i=1}^{10} f(i) g(10-i) $$
   ![image.png|inline|400](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250319011323618.png)    ![image.png|inline|190](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250319011410471.png)
 
 #### 1.3.1.1 BP神经网络(浅神经网络)
-![image.png|375](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250327142003613.png)
-![image.png|375](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250327142248273.png)
+![image.png|300](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250327142003613.png)
+![image.png|300](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250327142248273.png)
 - 为什么无法识别其他位置上的横折?
   - BP神经网络自身的全连接结构导致无法处理平移旋转等变换
 - BP神经网络的缺陷
@@ -73,8 +73,6 @@ $$ f * g(10) = \sum_{i=1}^{10} f(i) g(10-i) $$
   1. 大量物体位于不同位置的训练数据(计算量大)
   2. 增加网络的隐藏层个数
   3. 使用卷积神经网络(CNN)
-
----
 
 #### 1.3.1.2 CNN(深度神经网络)
 卷积神经网络大致流程:
@@ -93,17 +91,41 @@ Output(输出)的组合
 比如,你去一家连锁咖啡厅,点一杯美式,它的味道几乎是一模一样的。这是因为所有的咖啡师(神经网络的神经元)都使用同一种配方(权重)。在卷积神经网络里,卷积核(滤波器)就像这个配方,它在整个图像上滑动(类似咖啡师去处理不同的订单), 使用同一组参数来检测特征。
 
 权值共享通过减少参数数量和提升特征提取能力，从而有效解决了传统BP（误差反向传播）神经网络在处理平移、旋转等变换时的局限性
+![image.png|500](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250327144630838.png)
 
-![image.png](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250327144630838.png)
+##### 1.3.1.2.2 池化
+池化层通常前面会有一个卷积层，当有更多的卷积核就意味着有更多的特征图，也就是会有更多的特征，但是这么多的特征图并不是我们所都需要的，这些多余的特征图会带来**过拟合**，**维度过高**的问题。
+为解决这两个问题，我们可以利用池化层（下采样）。也就是说当我们进行卷积操作之后，再将得到的特征图进行特征提取，将其中最具有代表性的特征提取出来，可以起到减小过拟合和降低维度的作用。
 
-##### 1.3.1.2.2 非线性映射(ReLu)
+以什么规则进行特征提取？（类似卷积过程，一个小正方形的小方块在图片上移动，每次取最具有代表性的特征）
+![image.png](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250328132028718.png)
+
+如何提取到最具有代表性的特征？通常用下面两种方法
+- 最大池化
+  ![image.png|475](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250328132143090.png)
+- 平均池化
+  ![image.png|475](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250328132227403.png)
+优点：
+- 在减少参数量的同时，还保留了原图像的原始特征
+- 有效防止过拟合（模型在训练数据上表现很好，在新的数据表现差）
+- 为卷积神经网络带来平移不变性
+
+##### 1.3.1.2.3 非线性映射(ReLu)
 ReLU的作用是引入**非线性**,使得网络能够学习复杂的非线性映射关系。如果没有 ReLU，网络只是一个线性变换的叠加，本质上仍然是一个线性模型，无法有效处理复杂问题。
 ![image.png](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250327150603169.png)
 - 当 x > 0 时，输出 x（保持线性）
 - 当 x ≤ 0 时，输出 0（抑制负值）
 
-##### 1.3.1.2.3 example
-[[CNN#^c4f199|LeNet-5]]
+##### 1.3.1.2.4 example
+###### 1.3.1.2.4.1 YOLO
+CNN实现多个目标检测的经典模型 - YOLO
+![image.png|475](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250328001603335.png)
+例如，把图片设置为16个区域，每个区域用1个（c, x, y, w, h)去负责，就可以一次输出16个框
+- x, y：该中⼼点相对于所在⽹格单元 grid cell 左上⻆位置偏移
+- w 、h ：边界框（bounding box）的宽度和⾼度
+- c：置信度（confidence）表示该网格中是否有物体及预测框的准确性
+###### 1.3.1.2.4.2 LeNet-5
+[[CNN#^c4f199|LeNet-5]]图像分类
 
 
 
