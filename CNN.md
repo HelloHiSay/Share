@@ -1,4 +1,151 @@
-# 1 LeNet-5
+# 1 卷积
+## 1.1 Back
+全连接网络图：一张图片全部展开为一维向量输入网络，28×28  ->  784×1
+![image.png|350](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250403132113111.png)
+1.  输入数据的空间信息被丢失。AB两点的之间的空间相关性
+   ![image.png|350](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250403132609353.png)
+2. 模型参数过多，过拟合（模型在训练数据上表现很好，在新的数据表现差）
+   每个像素点都要跟所有输出的神经元相连接。当图片尺寸变大时，输入神经元的个数会按 图片尺寸的平方增大，导致模型参数过多，容易发生过拟合。（刷题）
+   例如：对于一幅1000×1000的输入图像而言，如果下一个隐含层的神经元数目为$10^6$ 个，那么将会有$1000×1000×10^6=10^{12}$个权重参数。
+   解决上述问题：引入卷积对输入图像进行特征提取
+
+## 1.2 卷积核/特征图/计算
+- 卷积核（kernel）：也叫滤波器（filter)。卷积核中的数值为对输入图像中与卷积核大小相同的的子块像素点进行卷积计算采用的权重。
+- 特征图（feature map）：卷积滤波结果在卷积神经网络中被称为特征图（feature map）。
+
+![image.png](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250403135005520.png)
+
+- 输入形状$n_h×n_w$，卷积核形状$k_h×k_w$，输出形状:$(n_h-k_h+1)×(n_w-k_w+1)$
+
+#### 1.2.1.1 图像中目标的边缘检测
+```Python
+# 构造 6×8 的黑白图像，中间 4 列为黑色 (0)，其余为白色 (1)image = torch.ones((1, 1, 6, 8))  # (batch_size=1, channels=1, height=6, width=8)  
+image[:, :, :, 2:6] = 0  # 中间 4 列设为黑色  
+print("原始图像:")  
+print(image)  
+  
+# 构造垂直边缘检测核（高度=1，宽度=2）  
+kernel = torch.tensor([[[[1.0, -1.0]]]])  # (out_channels=1, in_channels=1, height=1, width=2)  
+  
+# 进行互相关运算
+#2D卷积，不使用padding
+result = F.conv2d(image, kernel, padding=0)  print("\n互相关运算结果:")  
+print(result)
+```
+不同卷积核作用不同：
+p1 ：检测图像的边缘
+p2：水平和对角线方向的边缘检测
+![image.png](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250404112258120.png)
+
+## 1.3 填充和步幅
+### 1.3.1 1.3.1填充
+多层卷积会损失边缘像素。解决办法之一 -> 填充（在边缘像素点周围填充“0”（即0填充），使得输入图像的边缘像素也可以参与卷积计算）
+
+输入图片尺寸：4×4
+![image.png|450](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250403212513335.png)![image.png|194](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250403212743085.png)
+- picture(a) ：输出图片尺寸为4×4
+- picture(b)：输出图片尺寸为6×6
+输出形状变为：$(n_h-k_h+p_h*2+1)×(n_w-k_w+p_w*2+1)$ 
+$p_h$为填充的行，$p_w$为填充的列
+卷积核大小通常使用1，3，5，7这样的奇数，这样如果使用的填充大小为$p_h = \frac{k_h - 1}{2}, \quad p_w = \frac{k_w - 1}{2},$则可以使得卷积之后图像尺寸不变。例如当卷积核大小为3时padding大小为1，卷积之后图像尺寸不变；同理，如果卷积核大小为5，padding大小为2，也能保持图像尺寸不变。
+
+```python
+import torch  
+from torch import nn  
+  
+def comp_conv2d(conv2d, X):  
+    X = X.reshape((1, 1) + X.shape)  # PyTorch输入4D  
+    Y = conv2d(X)  # 计算二维卷积，输出4张量  
+    return Y.reshape(Y.shape[2:])  # 只返回四维张量的H、W  
+  
+# 输入形状为 (batch_size, num_channels, height, width)
+conv2d_1 = nn.Conv2d(1, 1, kernel_size=3, padding=1)  
+X_1 = torch.rand(size=(4, 4))  # 4×4的随机张量，数值在 [0, 1] 之间  
+result_1 = comp_conv2d(conv2d_1, X_1).shape  # 张量形状  
+print('padding=1时的输出尺寸', result_1)  
+  
+conv2d_2 = nn.Conv2d(1, 1, kernel_size=3, padding=2)  
+X_2 = torch.rand(size=(4, 4))  
+result_2 = comp_conv2d(conv2d_2, X_2).shape  
+print('padding=2时的输出尺寸', result_2)
+```
+
+### 1.3.2 步幅
+卷积操作 -> 缩减采样次数或高效计算，每次滑动多个元素。
+![image.png|300](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250404002635229.png)  ![image.png|325](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250404002732891.png)
+- 左图步长为2的卷积过程，每次移动两个像素点
+- 右图步长为1的卷积过程，每次移动一个像素点
+输出特征图形状：（$s_h$垂直步幅，$s_w$水平步幅）
+$$
+\left( \frac{n_h - k_h + p_h*2 + s_h}{s_h} \right) \times \left( \frac{n_w - k_w + p_w*2 + s_w}{s_w} \right)
+$$
+
+```python
+conv2d_3 = nn.Conv2d(1, 1, kernel_size=2, stride=2)  
+X_3 = torch.rand(size=(4, 4))  
+result_3 = comp_conv2d(conv2d_3, X_3).shape  
+print('stride=2时的输出尺寸', result_3)
+```
+
+## 1.4 感受野
+卷积所得结果当中，每个特征图像素点的取值依赖于**输入图像**的某个区域，该区域就称为感受野。
+感受野 -> 对应输入图片的像素尺寸，不是上一层输入尺寸
+![image.png](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250404012122030.png)
+卷积网络越深，感受野越大，特征图中的一个像素点包含更多信息
+
+## 1.5 多输入输出通道场景
+灰度图单通道，彩色图片RGB三个通道，处理多输入通道场景，相应输出特征图也具有多个通道。
+#### 1.5.1.1 多输入通道场景
+![image.png](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250403143346602.png)
+
+#### 1.5.1.2 多输出通道场景
+检测多种类型的特征，使用多种卷积核计算
+![image.png](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250403144834109.png)
+
+#### 1.5.1.3 1×1卷积层
+对卷积核通道数进行降维（减少参数量）和升维。
+降维：
+![image.png|425](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250404103710099.png)
+- 减少参数量：
+  ![image.png|550](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250404104244573.png)![image.png|550](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250404104305549.png)
+
+---
+
+## 1.6 卷积优势
+- 局部连接
+  每个神经元只与局部的一块区域进行连接，训练后的滤波器能够对局部特征有强的响应，使得神经网络可以提取数据的局部特征
+  ![image.png](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250404105752178.png)
+  
+  1000×1000的输入图像，下一个隐含层的神经元数目同样为$10^6$ 个，每个神经元与大小10×10的局部区域连接,权重参数为$10×10×10^6=10^8$
+- 权重共享
+  卷积计算 -> 卷积核在图片上滑动，计算乘积求和。同一个卷积核计算过过程，与图像计算过程中，权重是共享的
+	![image.png](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250404111203956.png)
+-  不同层级卷积提取不同特征
+  浅层卷积提取的是图像中的边缘等信息；
+  中层卷积提取的是图像中的局部信息；
+  深层卷积提取的则是图像中的全局信息。
+  ![image.png|375](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250404111451175.png)
+  Layer1和Layer2种，网络学到的基本上是边缘、颜色等底层特征；Layer3开始变的稍微复杂，学习到的是纹理特征；Layer4中，学习到了更高维的特征，比如：狗头、鸡脚等；Layer5则学习到了更加具有辨识性的全局特征。
+
+
+[卷积（Convolution）](https://paddlepedia.readthedocs.io/en/latest/tutorials/CNN/convolution_operator/Convolution.html)
+[卷积神经网络（CNN）详细介绍及其原理详解](https://blog.csdn.net/IronmanJay/article/details/128689946)
+[深度学习基础学习-1x1卷积核的作用（CNN中）](https://blog.csdn.net/m0_47146037/article/details/127769028?ops_request_misc=%257B%2522request%255Fid%2522%253A%2522f2b9d857c35a2dd6e0e7d0f9a5a5d45c%2522%252C%2522scm%2522%253A%252220140713.130102334..%2522%257D&request_id=f2b9d857c35a2dd6e0e7d0f9a5a5d45c&biz_id=0&utm_medium=distribute.pc_search_result.none-task-blog-2~all~top_click~default-1-127769028-null-null.142^v102^pc_search_result_base1&utm_term=1*1%E5%8D%B7%E7%A7%AF%E6%A0%B8&spm=1018.2226.3001.4187)
+[【深度学习】一文搞懂卷积神经网络（CNN）的原理（超详细）](https://blog.csdn.net/AI_dataloads/article/details/133250229?ops_request_misc=%257B%2522request%255Fid%2522%253A%25228f81ddc78c4590d0ee2faa3d936bd34e%2522%252C%2522scm%2522%253A%252220140713.130102334..%2522%257D&request_id=8f81ddc78c4590d0ee2faa3d936bd34e&biz_id=0&utm_medium=distribute.pc_search_result.none-task-blog-2~all~top_positive~default-5-133250229-null-null.142^v102^pc_search_result_base1&utm_term=cnn&spm=1018.2226.3001.4187)
+
+
+---
+
+
+
+---
+
+
+
+
+
+
+# 2 LeNet-5
 
 ^c4f199
 
@@ -9,9 +156,6 @@
     - 卷积核种类（决定输出特征图的数量）：6
     - 卷积核大小：5 × 5（限制于当时计算机资源水平，论文里使用的5×5）
     - 特征图大小：28 × 28 - 没有进行填充（padding=0）
-      - 输出特征图大小公式：
-        $32-5+1=28$
-        $$\text{输出尺寸} = \frac{\text{输入尺寸} - \text{卷积核尺寸} + 2 \times \text{填充（padding）}}{\text{步长（stride)}} + 1$$
     - 可训练参数：(5 × 5 + 1) × 6
       卷积核是一个5×5的矩阵，里面的每一个数都是要通过训练得到的。在实际运算中还要加上一个偏置bias，所以每一个卷积核需要训练5×5+1个参数，6个卷积核就需要训练(5 × 5 + 1) × 6 = 156个参数。
 ---
@@ -40,7 +184,6 @@
       ![image.png|305](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250325112941090.png)
       横轴为编号0~15的16个卷积核，纵轴为0~5张输入的特征图，X表示为连接。    
 	- 输出特征图大小：10×10(padding=0) 
-		  $\text{输出尺寸} = \frac{\text{输入尺寸} - \text{卷积核尺寸} + 2 \times \text{填充（padding）}}{\text{步长（stride)}} + 1$
 		 输出特征图的边长为： $14-5+1=10$
 	- 可训练参数：1516
 	    ![image.png](https://raw.githubusercontent.com/HelloHiSay/Obsidian_picture/main/obsidian/20250325112941090.png)
